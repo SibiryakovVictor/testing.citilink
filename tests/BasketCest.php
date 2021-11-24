@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+use Page\Acceptance\BasketPage;
+use Page\Acceptance\GoodCatalogPage;
+
 class BasketCest
 {
     /**
@@ -8,30 +11,21 @@ class BasketCest
      */
     public function testAddGoodFromGoodPage(AcceptanceTester $I)
     {
-        $I->amOnPage('/catalog/noutbuki--ultrabuki/');
+        $catalog = GoodCatalogPage::createNotebooksCatalog($I);
 
-        $goodTitle = $I->grabAttributeFrom(['css' => '.ProductCardHorizontal:first-child .ProductCardHorizontal__title'], 'title');
-        $goodPrice = trim($I->grabTextFrom(
-            ['css' => '.ProductCardHorizontal:first-child .ProductCardHorizontal__price_current-price']
-        ));
-        $I->click(['css' => '.ProductCardHorizontal:first-child .ProductCardHorizontal__title']);
+        $goodTitle = $catalog->grabGoodTitle(7);
+        $goodPrice = $catalog->grabGoodPrice(7);
 
-        $I->waitForElementClickable(['css' => '.ProductHeader__buy-button'], 15);
-        $I->scrollTo(['css' => '.ProductHeader__buy-button'], null, -200);
-        $I->click(['css' => '.ProductHeader__buy-button']);
+        $goodPage = $catalog->toGoodPage(7);
 
-        try {
-            $I->waitForElementClickable(['css' => '.UpsaleBasket__buttons button.UpsaleBasket__order'], 15);
-            $I->scrollTo(['css' => '.UpsaleBasket__main-popup__close'], null, -50);
-            $I->clickWithLeftButton(['css' => '.UpsaleBasket__main-popup__close']);
-        } catch (Exception $exception) {}
+        $goodPage->addToBasket();
 
-        $I->scrollTo(['css' => '.ProductHeader__buy-button'], null, -200);
-        $I->click(['css' => '.ProductHeader__buy-button']);
+        $goodPage->closePopupIfAppeared();
 
-        $I->amOnPage('/order/');
-        $I->canSee($goodTitle);
-        $I->canSee($goodPrice, ['css' => '.OrderFinalPrice__price-current_current-price']);
+        $basketPage = $goodPage->goToBasketThroughAddButton();
+
+        $basketPage->ensureHasGood($goodTitle);
+        $basketPage->ensureTotalPriceEquals($goodPrice);
     }
 
     /**
@@ -39,23 +33,23 @@ class BasketCest
      */
     public function testAddGoodFromGoodCatalog(AcceptanceTester $I)
     {
-        $this->ensureBasketIsEmpty($I);
+        $catalog = GoodCatalogPage::createNotebooksCatalog($I);
 
-        $I->amOnPage('/catalog/noutbuki--ultrabuki/');
+        $goodTitle = $catalog->grabGoodTitle(7);
+        $goodPrice = $catalog->grabGoodPrice(7);
 
-        $goodTitle = $I->grabAttributeFrom(['css' => '.ProductCardHorizontal:first-child .ProductCardHorizontal__title'], 'title');
-        $goodPrice = trim($I->grabTextFrom(
-            ['css' => '.ProductCardHorizontal:first-child .ProductCardHorizontal__price_current-price']
-        ));
+        $catalog->addGoodToBasket(7);
 
+        $catalog->closePopupIfAppeared();
 
+        $basketPage = $catalog->goToBasketThroughAddButton(7);
+
+        $basketPage->ensureHasGood($goodTitle);
+        $basketPage->ensureTotalPriceEquals($goodPrice);
     }
 
-    private function ensureBasketIsEmpty(AcceptanceTester $I)
+    private function ensureBasketIsEmpty(BasketPage $basketPage)
     {
-        if (!$I->tryToSeeInCurrentUrl('/order/')) {
-            $I->amOnPage('/order/');
-        }
-        $I->tryToClick(['css' => 'button.OrderFinalPrice__empty-cart']);
+        $basketPage->ensureIsEmpty();
     }
 }
