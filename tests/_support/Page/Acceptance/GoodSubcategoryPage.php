@@ -6,7 +6,7 @@ namespace Page\Acceptance;
 use AcceptanceTester;
 use Exception;
 
-class GoodCatalogPage
+class GoodSubcategoryPage
 {
     private const CATALOG_NOTEBOOKS = '/catalog/noutbuki--ultrabuki/';
 
@@ -34,7 +34,7 @@ class GoodCatalogPage
      */
     protected AcceptanceTester $acceptanceTester;
 
-    private function __construct(AcceptanceTester $I, string $catalogUrl)
+    public function __construct(AcceptanceTester $I, string $catalogUrl)
     {
         $this->acceptanceTester = $I;
         $this->url = $catalogUrl;
@@ -43,9 +43,9 @@ class GoodCatalogPage
 
     /**
      * @param AcceptanceTester $I
-     * @return GoodCatalogPage
+     * @return GoodSubcategoryPage
      */
-    public static function createNotebooksCatalog(AcceptanceTester $I): self
+    public static function createNotebooksSubcategory(AcceptanceTester $I): self
     {
         return new self($I, self::CATALOG_NOTEBOOKS);
     }
@@ -67,13 +67,37 @@ class GoodCatalogPage
      * @param int $goodPosition
      * @return string
      */
-    public function grabGoodPrice(int $goodPosition): string
+    public function grabGoodPrice(int $goodPosition): int
     {
         $this->ensureOnUrl();
 
         $priceSelector = $this->getGoodPriceSelector($goodPosition);
 
-        return trim($this->acceptanceTester->grabTextFrom($priceSelector));
+        $price = $this->acceptanceTester->grabTextFrom($priceSelector);
+
+        return (int)preg_replace('/\D/', '', $price);
+    }
+
+    public function incrementGoodCount(int $goodPosition)
+    {
+        $this->ensureOnUrl();
+
+        $increaseBtnSelector = $this->getIncreaseCountBtnSelector($goodPosition);
+
+        $this->acceptanceTester->waitForElementClickable($increaseBtnSelector);
+        $this->acceptanceTester->clickWithLeftButton($increaseBtnSelector);
+        $this->acceptanceTester->wait(5);
+    }
+
+    public function decrementGoodCount(int $goodPosition)
+    {
+        $this->ensureOnUrl();
+
+        $increaseBtnSelector = $this->getDecreaseCountBtnSelector($goodPosition);
+
+        $this->acceptanceTester->waitForElementClickable($increaseBtnSelector);
+        $this->acceptanceTester->clickWithLeftButton($increaseBtnSelector);
+        $this->acceptanceTester->wait(5);
     }
 
     public function addGoodToBasket(int $goodPosition)
@@ -130,6 +154,32 @@ class GoodCatalogPage
         return new GoodPage($this->acceptanceTester, $goodUrl);
     }
 
+    public function addRandomGoods(int $goodCount): array
+    {
+        $goodPositions = [];
+        while (count($goodPositions) !== $goodCount) {
+            do {
+                $goodPosition = rand(1, 15);
+            } while ($goodPosition === 4);
+
+            if (
+                !$this->acceptanceTester->tryToSeeElementInDOM(['css' => sprintf(
+                '.ProductCardHorizontal:nth-child(%s)',
+                    $goodPosition
+                )])
+            ) {
+                continue;
+            }
+
+            if ($this->addGoodToBasket($goodPosition)) {
+                $goodPositions[] = $goodPosition;
+                $this->closePopupIfAppeared();
+            }
+        }
+
+        return $goodPositions;
+    }
+
     private function getGoodTitleSelector(int $goodPosition): array
     {
         return ['css' => sprintf(
@@ -158,6 +208,22 @@ class GoodCatalogPage
     {
         return ['css' => sprintf(
             '.ProductCardHorizontal:nth-child(%s) .ProductCardHorizontal__buy-block .ProductCardHorizontal__button_visible .ProductCardHorizontal__button_order',
+            $goodPosition
+        )];
+    }
+
+    private function getIncreaseCountBtnSelector(int $goodPosition): array
+    {
+        return ['css' => sprintf(
+            '.ProductCardHorizontal:nth-child(%s) .CountSelector__control_increase',
+            $goodPosition
+        )];
+    }
+
+    private function getDecreaseCountBtnSelector(int $goodPosition): array
+    {
+        return ['css' => sprintf(
+            '.ProductCardHorizontal:nth-child(%s) .CountSelector__control_reduction',
             $goodPosition
         )];
     }

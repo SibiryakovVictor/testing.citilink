@@ -12,15 +12,13 @@ services:
 
   webdriver:
     image: selenium/standalone-chrome
-    shm_size: '3g'
+    shm_size: '2g'
     dns: 8.8.4.4
     ports:
       - '4444:4444'
       - '7900:7900'
     networks:
       - testing-citilink
-    volumes:
-      - /dev/shm:/dev/shm
 
 networks:
   testing-citilink:
